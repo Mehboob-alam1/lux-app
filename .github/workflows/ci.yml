@@ -1,0 +1,46 @@
+name: CI
+
+on:
+  push:
+    branches: [main, master]
+  pull_request:
+
+jobs:
+  contracts-functions:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm install
+      - run: npm run build:contracts
+      - run: npm run build:functions
+      - run: npm run test:contracts
+      - run: npm run test:functions
+      - run: npm run typecheck -w @lux/contracts
+      - run: npm run typecheck -w @lux/functions
+
+  admin:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: npm
+      - run: npm install
+      - run: npm run build:contracts
+      - run: npm run build:admin
+
+  rules-syntax:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+      - run: npm install firebase-tools --no-save
+      - run: npx firebase-tools firestore:rules --help >/dev/null
+      # Full emulator rules tests added when java available in CI image

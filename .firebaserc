@@ -1,0 +1,16 @@
+{
+  "projects": {
+    "default": "uberclone-6e4a0",
+    "dev": "uberclone-6e4a0",
+    "staging": "lux-staging",
+    "prod": "lux-prod"
+  },
+  "targets": {
+    "uberclone-6e4a0": {
+      "hosting": {
+        "admin": ["lux-admin-dev"],
+        "guest": ["lux-guest-dev"]
+      }
+    }
+  }
+}

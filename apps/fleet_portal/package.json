@@ -1,0 +1,10 @@
+{
+  "name": "@lux/fleet-portal",
+  "version": "0.0.0",
+  "private": true,
+  "description": "PLACEHOLDER ONLY — Fleet Portal is NEXT UPDATE. No business logic in this package.",
+  "scripts": {
+    "dev": "echo 'Fleet Portal not implemented this update' && exit 0",
+    "build": "echo 'Fleet Portal placeholder — skip build' && exit 0"
+  }
+}

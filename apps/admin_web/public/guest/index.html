@@ -1,0 +1,117 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>LUX Guest Journey</title>
+    <style>
+      :root {
+        --bg: #f6f6f4;
+        --lime: #e2ff00;
+        --ink: #000;
+        --muted: #8e8e93;
+      }
+      body {
+        margin: 0;
+        font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+        background: var(--bg);
+        color: var(--ink);
+        padding: 24px;
+      }
+      .logo {
+        width: 56px;
+        height: 56px;
+        border-radius: 999px;
+        background: var(--lime);
+        display: grid;
+        place-items: center;
+        font-weight: 800;
+        font-size: 24px;
+      }
+      .card {
+        background: #fff;
+        border-radius: 28px;
+        padding: 20px;
+        margin-top: 16px;
+      }
+      .muted {
+        color: var(--muted);
+      }
+      .banner {
+        background: var(--lime);
+        border-radius: 28px;
+        padding: 20px;
+        margin-top: 16px;
+      }
+    </style>
+  </head>
+  <body>
+    <div class="logo">L</div>
+    <h1>Guest journey</h1>
+    <p class="muted">
+      Scoped view only — chauffeur, vehicle, plate, meeting point, ETA. No prices
+      or private account details.
+    </p>
+    <div id="status" class="banner">Loading…</div>
+    <div id="content"></div>
+    <script>
+      const params = new URLSearchParams(location.search);
+      const linkId = params.get('linkId');
+      const t = params.get('t');
+      const base =
+        params.get('api') ||
+        'http://127.0.0.1:5001/lux-dev/us-central1/resolveGuestLink';
+      async function load() {
+        const el = document.getElementById('status');
+        const content = document.getElementById('content');
+        if (!linkId || !t) {
+          el.textContent = 'Missing linkId or token.';
+          return;
+        }
+        try {
+          const res = await fetch(
+            `${base}?linkId=${encodeURIComponent(linkId)}&t=${encodeURIComponent(t)}`,
+          );
+          const data = await res.json();
+          if (!res.ok) {
+            el.textContent = data.error || 'Unable to open guest link';
+            return;
+          }
+          el.innerHTML =
+            '<strong>' +
+            (data.currentStatus || '') +
+            '</strong><div class="muted">Expires ' +
+            (data.expiresAt || '') +
+            '</div>';
+          content.innerHTML =
+            '<div class="card"><div class="muted">Meeting point</div><strong>' +
+            (data.meetingPoint || '—') +
+            '</strong><div class="muted">' +
+            (data.meetingAddress || '') +
+            '</div></div>' +
+            '<div class="card"><div class="muted">Chauffeur</div><strong>' +
+            (data.chauffeur?.displayName || 'Assigning…') +
+            '</strong></div>' +
+            '<div class="card"><div class="muted">Vehicle</div><strong>' +
+            [data.vehicle?.color, data.vehicle?.make, data.vehicle?.model]
+              .filter(Boolean)
+              .join(' ') +
+            '</strong><div>Plate ' +
+            (data.vehicle?.plate || '—') +
+            '</div></div>' +
+            '<div class="card"><div class="muted">Readiness</div><strong>' +
+            (data.readiness || '—') +
+            '</strong></div>';
+          // Explicitly never render price fields even if API regresses
+          if ('customerPriceMinor' in data || 'totalMinor' in data) {
+            el.textContent = 'Security error: financial fields leaked';
+            content.innerHTML = '';
+          }
+        } catch (e) {
+          el.textContent = String(e);
+        }
+      }
+      load();
+    </script>
+  </body>
+</html>

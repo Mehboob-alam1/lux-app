@@ -1,0 +1,11 @@
+{
+  "name": "@lux/ui-tokens",
+  "version": "0.1.0",
+  "private": true,
+  "main": "src/tokens.js",
+  "scripts": {
+    "build": "echo 'tokens package — no build'",
+    "lint": "echo ok",
+    "typecheck": "echo ok"
+  }
+}

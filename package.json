@@ -1,0 +1,41 @@
+{
+  "name": "lux",
+  "version": "0.1.0",
+  "private": true,
+  "description": "LUX Premium Mobility — Firebase monorepo (Customer, Driver, Admin)",
+  "workspaces": [
+    "packages/*",
+    "functions",
+    "apps/admin_web",
+    "apps/fleet_portal",
+    "apps/travel_agency_portal"
+  ],
+  "scripts": {
+    "build": "npm run build -w @lux/contracts && npm run build -w @lux/functions && npm run build -w @lux/admin-web",
+    "build:contracts": "npm run build -w @lux/contracts",
+    "build:functions": "npm run build -w @lux/functions",
+    "build:admin": "npm run build -w @lux/admin-web",
+    "lint": "npm run lint -w @lux/contracts && npm run lint -w @lux/functions && npm run lint -w @lux/admin-web",
+    "typecheck": "npm run typecheck -w @lux/contracts && npm run typecheck -w @lux/functions && npm run typecheck -w @lux/admin-web",
+    "test": "npm run test -w @lux/contracts && npm run test -w @lux/functions",
+    "test:contracts": "npm run test -w @lux/contracts",
+    "test:functions": "npm run test -w @lux/functions",
+    "emulators": "firebase emulators:start --import=./.emulator-data --export-on-exit",
+    "emulators:exec": "firebase emulators:exec --only auth,firestore,functions,storage",
+    "seed": "npm run seed -w @lux/functions",
+    "e2e:invariants": "node scripts/e2e-booking.mjs",
+    "e2e:smoke": "node scripts/e2e-smoke.mjs",
+    "format": "prettier -w \"**/*.{ts,tsx,js,json,md}\" --ignore-path .gitignore"
+  },
+  "dependencies": {
+    "firebase-admin": "^13.10.0"
+  },
+  "engines": {
+    "node": ">=20"
+  },
+  "devDependencies": {
+    "firebase-tools": "^14.23.0",
+    "prettier": "^3.5.3",
+    "typescript": "^5.8.2"
+  }
+}

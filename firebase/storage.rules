@@ -1,0 +1,73 @@
+rules_version = '2';
+service firebase.storage {
+  match /b/{bucket}/o {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function uid() {
+      return request.auth.uid;
+    }
+    function isAdminCompliance() {
+      return signedIn() && request.auth.token.roles != null && (
+        'ADMIN_COMPLIANCE' in request.auth.token.roles ||
+        'ADMIN_SUPER' in request.auth.token.roles ||
+        'ADMIN_OPERATIONS' in request.auth.token.roles
+      );
+    }
+    function isSafety() {
+      return signedIn() && request.auth.token.roles != null && (
+        'ADMIN_SAFETY' in request.auth.token.roles ||
+        'ADMIN_SUPER' in request.auth.token.roles
+      );
+    }
+    function validImage() {
+      return request.resource.size < 10 * 1024 * 1024
+        && request.resource.contentType.matches('image/(jpeg|png|webp)');
+    }
+    function validDoc() {
+      return request.resource.size < 15 * 1024 * 1024
+        && (
+          request.resource.contentType.matches('image/(jpeg|png|webp)') ||
+          request.resource.contentType == 'application/pdf'
+        );
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+
+    // Driver documents — owner upload only; review via Functions metadata
+    match /driver_documents/{driverId}/{fileName} {
+      allow read: if signedIn() && (uid() == driverId || isAdminCompliance());
+      allow create: if signedIn() && uid() == driverId && validDoc();
+      allow update, delete: if false;
+    }
+
+    match /vehicle_documents/{driverId}/{vehicleId}/{fileName} {
+      allow read: if signedIn() && (uid() == driverId || isAdminCompliance());
+      allow create: if signedIn() && uid() == driverId && validDoc();
+      allow update, delete: if false;
+    }
+
+    match /vehicle_photos/{driverId}/{vehicleId}/{fileName} {
+      allow read: if signedIn() && (uid() == driverId || isAdminCompliance());
+      allow create: if signedIn() && uid() == driverId && validImage();
+      allow update, delete: if false;
+    }
+
+    // Evidence — restricted; customers never list arbitrary evidence
+    match /evidence/{bookingId}/{fileName} {
+      allow read: if isSafety() || isAdminCompliance();
+      allow create: if signedIn() && validImage();
+      allow update, delete: if false;
+    }
+
+    match /dispute_evidence/{disputeId}/{fileName} {
+      allow read: if isSafety() || isAdminCompliance()
+        || (signedIn() && request.auth.token.roles != null
+            && 'ADMIN_FINANCE' in request.auth.token.roles);
+      allow create: if signedIn() && validDoc();
+      allow update, delete: if false;
+    }
+  }
+}

@@ -1,0 +1,342 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+    function signedIn() {
+      return request.auth != null;
+    }
+    function uid() {
+      return request.auth.uid;
+    }
+    function hasClaimRole(role) {
+      return signedIn() && request.auth.token.roles != null
+        && role in request.auth.token.roles;
+    }
+    function isAdmin() {
+      return signedIn() && request.auth.token.roles != null && (
+        'ADMIN_SUPER' in request.auth.token.roles ||
+        'ADMIN_OPERATIONS' in request.auth.token.roles ||
+        'ADMIN_DISPATCHER' in request.auth.token.roles ||
+        'ADMIN_SUPPORT' in request.auth.token.roles ||
+        'ADMIN_FINANCE' in request.auth.token.roles ||
+        'ADMIN_COMPLIANCE' in request.auth.token.roles ||
+        'ADMIN_SAFETY' in request.auth.token.roles ||
+        'ADMIN_READ_ONLY' in request.auth.token.roles
+      );
+    }
+    function isSuper() {
+      return hasClaimRole('ADMIN_SUPER');
+    }
+
+    // Default deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+
+    // Public market config (active markets only via client query discipline)
+    match /markets/{marketId} {
+      allow read: if true;
+      allow write: if false; // Functions Admin SDK only
+    }
+    match /vehicle_classes/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /feature_flags/{id} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+    match /service_areas/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+    match /airports/{id} {
+      allow read: if true;
+      allow write: if false;
+    }
+    // Pricing rules: authenticated read for display metadata only; amounts trusted via quotes
+    match /pricing_rules/{id} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+    match /policy_versions/{id} {
+      allow read: if signedIn();
+      allow write: if false;
+    }
+
+    match /users/{userId} {
+      allow read: if signedIn() && (uid() == userId || isAdmin());
+      allow write: if false;
+    }
+
+    match /customer_profiles/{userId} {
+      allow read: if signedIn() && (uid() == userId || isAdmin());
+      allow write: if false;
+      match /family_members/{memberId} {
+        allow read: if signedIn() && (uid() == userId || isAdmin());
+        allow write: if false;
+      }
+    }
+
+    match /drivers/{driverId} {
+      allow read: if signedIn() && (uid() == driverId || isAdmin());
+      allow write: if false;
+    }
+
+    match /vehicles/{vehicleId} {
+      allow read: if signedIn() && (
+        resource.data.ownerDriverId == uid() || isAdmin()
+      );
+      allow write: if false;
+    }
+
+    match /driver_documents/{id} {
+      allow read: if signedIn() && (
+        resource.data.ownerUid == uid() ||
+        hasClaimRole('ADMIN_COMPLIANCE') ||
+        hasClaimRole('ADMIN_SUPER') ||
+        hasClaimRole('ADMIN_OPERATIONS')
+      );
+      allow write: if false;
+    }
+
+    match /vehicle_documents/{id} {
+      allow read: if signedIn() && (
+        resource.data.ownerUid == uid() ||
+        hasClaimRole('ADMIN_COMPLIANCE') ||
+        hasClaimRole('ADMIN_SUPER') ||
+        hasClaimRole('ADMIN_OPERATIONS')
+      );
+      allow write: if false;
+    }
+
+    match /eligibility_records/{id} {
+      allow read: if signedIn() && (
+        resource.data.ownerUid == uid() || isAdmin()
+      );
+      allow write: if false;
+    }
+
+    // Quotes: owner read; no client write
+    match /quotes/{quoteId} {
+      allow read: if signedIn() && (
+        resource.data.customerUid == uid() || isAdmin()
+      );
+      allow write: if false;
+    }
+
+    // Bookings: owner/assigned driver/admin read; no client write of state
+    match /bookings/{bookingId} {
+      allow read: if signedIn() && (
+        resource.data.customerUid == uid() ||
+        resource.data.bookerUid == uid() ||
+        resource.data.assignedDriverId == uid() ||
+        isAdmin()
+      );
+      allow write: if false;
+
+      match /events/{eventId} {
+        allow read: if signedIn() && (
+          get(/databases/$(database)/documents/bookings/$(bookingId)).data.customerUid == uid() ||
+          get(/databases/$(database)/documents/bookings/$(bookingId)).data.bookerUid == uid() ||
+          get(/databases/$(database)/documents/bookings/$(bookingId)).data.assignedDriverId == uid() ||
+          isAdmin()
+        );
+        allow write: if false;
+      }
+    }
+
+    match /assignments/{id} {
+      allow read: if signedIn() && (
+        resource.data.driverId == uid() || isAdmin()
+      );
+      allow write: if false;
+    }
+
+    match /driver_offers/{id} {
+      allow read: if signedIn() && (
+        resource.data.driverId == uid() || isAdmin()
+      );
+      allow write: if false;
+    }
+
+    match /driver_availability/{id} {
+      allow read: if signedIn() && (
+        resource.data.driverId == uid() || isAdmin()
+      );
+      allow write: if false;
+    }
+
+    // Live location: customer of active booking or admin; driver self
+    match /driver_locations/{driverId} {
+      allow read: if signedIn() && (uid() == driverId || isAdmin());
+      allow write: if false;
+    }
+
+    match /payments/{id} {
+      allow read: if signedIn() && (
+        resource.data.customerUid == uid() ||
+        hasClaimRole('ADMIN_FINANCE') ||
+        hasClaimRole('ADMIN_SUPER') ||
+        hasClaimRole('ADMIN_SUPPORT')
+      );
+      allow write: if false;
+    }
+
+    match /payment_events/{id} {
+      allow read: if hasClaimRole('ADMIN_FINANCE') || isSuper();
+      allow write: if false;
+    }
+
+    match /refunds/{id} {
+      allow read: if signedIn() && (
+        resource.data.customerUid == uid() ||
+        hasClaimRole('ADMIN_FINANCE') || isSuper()
+      );
+      allow write: if false;
+    }
+
+    match /credits/{id} {
+      allow read: if signedIn() && (
+        resource.data.customerUid == uid() ||
+        hasClaimRole('ADMIN_FINANCE') ||
+        hasClaimRole('ADMIN_SUPPORT') || isSuper()
+      );
+      allow write: if false;
+    }
+
+    match /tips/{id} {
+      allow read: if signedIn() && (
+        resource.data.customerUid == uid() ||
+        resource.data.driverId == uid() ||
+        hasClaimRole('ADMIN_FINANCE') || isSuper()
+      );
+      allow write: if false;
+    }
+
+    match /payout_ledger/{id} {
+      allow read: if signedIn() && (
+        resource.data.driverId == uid() ||
+        hasClaimRole('ADMIN_FINANCE') || isSuper()
+      );
+      allow write: if false;
+    }
+
+    match /payout_batches/{id} {
+      allow read: if hasClaimRole('ADMIN_FINANCE') || isSuper();
+      allow write: if false;
+    }
+
+    match /financial_adjustments/{id} {
+      allow read: if hasClaimRole('ADMIN_FINANCE') || isSuper();
+      allow write: if false;
+    }
+
+    match /support_cases/{id} {
+      allow read: if signedIn() && (
+        resource.data.ownerUid == uid() ||
+        hasClaimRole('ADMIN_SUPPORT') ||
+        hasClaimRole('ADMIN_OPERATIONS') || isSuper()
+      );
+      allow write: if false;
+    }
+
+    match /support_messages/{id} {
+      allow read: if signedIn() && (
+        resource.data.authorUid == uid() ||
+        hasClaimRole('ADMIN_SUPPORT') || isSuper()
+      );
+      allow write: if false;
+    }
+
+    match /lost_items/{id} {
+      allow read: if signedIn() && (
+        resource.data.reporterUid == uid() ||
+        hasClaimRole('ADMIN_SUPPORT') || isSuper()
+      );
+      allow write: if false;
+    }
+
+    match /disputes/{id} {
+      allow read: if signedIn() && (
+        resource.data.partyUid == uid() ||
+        hasClaimRole('ADMIN_SUPPORT') ||
+        hasClaimRole('ADMIN_FINANCE') || isSuper()
+      );
+      allow write: if false;
+    }
+
+    match /dispute_evidence/{id} {
+      allow read: if hasClaimRole('ADMIN_SUPPORT') ||
+        hasClaimRole('ADMIN_FINANCE') ||
+        hasClaimRole('ADMIN_SAFETY') || isSuper();
+      allow write: if false;
+    }
+
+    match /incidents/{id} {
+      allow read: if signedIn() && (
+        resource.data.reporterUid == uid() ||
+        hasClaimRole('ADMIN_SAFETY') ||
+        hasClaimRole('ADMIN_SUPER') ||
+        hasClaimRole('ADMIN_OPERATIONS')
+      );
+      allow write: if false;
+    }
+
+    match /rescue_cases/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /notifications/{id} {
+      allow read: if signedIn() && resource.data.userId == uid();
+      allow write: if false;
+    }
+
+    match /device_tokens/{id} {
+      allow read: if signedIn() && resource.data.userId == uid();
+      allow write: if false;
+    }
+
+    // Guest links: no direct client read of raw tokens; resolve via Functions
+    match /guest_links/{id} {
+      allow read, write: if false;
+    }
+
+    match /audit_logs/{id} {
+      allow read: if hasClaimRole('ADMIN_SUPER') ||
+        hasClaimRole('ADMIN_COMPLIANCE') ||
+        hasClaimRole('ADMIN_FINANCE') ||
+        hasClaimRole('ADMIN_SAFETY') ||
+        hasClaimRole('ADMIN_READ_ONLY');
+      allow write: if false;
+    }
+
+    match /admin_actions/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /operational_alerts/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /analytics_daily/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /system_health/{id} {
+      allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    match /idempotency_keys/{id} {
+      allow read, write: if false;
+    }
+
+    match /outbox/{id} {
+      allow read, write: if false;
+    }
+  }
+}
