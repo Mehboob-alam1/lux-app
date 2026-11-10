@@ -95,12 +95,14 @@ export default function VehiclesPage() {
     setMsg(decision === 'APPROVE' ? 'Approving vehicle…' : 'Rejecting…');
     try {
       const fn = httpsCallable(getFirebaseFunctions(), 'reviewVehicle');
-      const res = await fn({
+      const payload: Record<string, unknown> = {
         vehicleId: selected.vehicleId,
         decision,
         checklist,
-        notes: notes.trim() || undefined,
-      });
+      };
+      const trimmed = notes.trim();
+      if (trimmed) payload.notes = trimmed;
+      const res = await fn(payload);
       const data = res.data as { status?: string; driverStatus?: string };
       setMsg(
         `Vehicle ${data.status}. Driver status: ${data.driverStatus ?? 'n/a'}`,

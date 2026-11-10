@@ -178,7 +178,10 @@ export default function DocumentsPage() {
     setMsg(null);
     try {
       const fn = httpsCallable(getFirebaseFunctions(), 'reviewDriverDocument');
-      await fn({ documentId, decision, notes: notes || undefined });
+      const payload: Record<string, unknown> = { documentId, decision };
+      const trimmed = notes?.trim();
+      if (trimmed) payload.notes = trimmed;
+      await fn(payload);
       setMsg(
         decision === 'APPROVE'
           ? 'Document approved'
