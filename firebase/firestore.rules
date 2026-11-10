@@ -91,7 +91,9 @@ service cloud.firestore {
 
     match /driver_documents/{id} {
       allow read: if signedIn() && (
+        resource.data.driverId == uid() ||
         resource.data.ownerUid == uid() ||
+        isAdmin() ||
         hasClaimRole('ADMIN_COMPLIANCE') ||
         hasClaimRole('ADMIN_SUPER') ||
         hasClaimRole('ADMIN_OPERATIONS')
@@ -313,6 +315,12 @@ service cloud.firestore {
 
     match /admin_actions/{id} {
       allow read: if isAdmin();
+      allow write: if false;
+    }
+
+    // Special-event overlays (admin console Events tab)
+    match /events/{id} {
+      allow read: if isAdmin() || signedIn();
       allow write: if false;
     }
 

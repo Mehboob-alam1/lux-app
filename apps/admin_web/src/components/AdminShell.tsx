@@ -15,7 +15,15 @@ export function AdminShell({
 }) {
   const pathname = usePathname();
   const router = useRouter();
-  const { user, loading, logout } = useAuth();
+  const {
+    user,
+    loading,
+    logout,
+    adminReady,
+    adminError,
+    adminRoles,
+    refreshAdminAccess,
+  } = useAuth();
 
   useEffect(() => {
     if (!loading && !user) router.replace('/login');
@@ -26,6 +34,39 @@ export function AdminShell({
       <div className="lux-boot">
         <div className="lux-boot-mark">L</div>
         <p>Checking admin session…</p>
+      </div>
+    );
+  }
+
+  if (!adminReady) {
+    return (
+      <div className="lux-boot">
+        <div className="lux-boot-mark">L</div>
+        <p style={{ maxWidth: 420, textAlign: 'center' }}>
+          {adminError
+            ? adminError
+            : 'Provisioning admin access for this account…'}
+        </p>
+        {adminError ? (
+          <button
+            type="button"
+            className="ghost"
+            style={{ marginTop: 12 }}
+            onClick={() => {
+              refreshAdminAccess().catch(() => undefined);
+            }}
+          >
+            Retry admin access
+          </button>
+        ) : null}
+        <button
+          type="button"
+          className="ghost"
+          style={{ marginTop: 8 }}
+          onClick={() => logout().then(() => router.push('/login'))}
+        >
+          Sign out
+        </button>
       </div>
     );
   }
@@ -105,7 +146,10 @@ export function AdminShell({
             />
           </div>
           <div className="lux-command-right">
-            <span className="lux-profile">{user.email ?? 'Admin'}</span>
+            <span className="lux-profile">
+              {user.email ?? 'Admin'}
+              {adminRoles[0] ? ` · ${adminRoles[0]}` : ''}
+            </span>
             <button
               type="button"
               className="ghost"

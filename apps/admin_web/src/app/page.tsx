@@ -140,7 +140,7 @@ export default function DashboardPage() {
             role="status"
           >
             {freshAt
-              ? `Fresh at ${freshAt}`
+              ? `Fresh at ${new Date(freshAt).toLocaleTimeString()}`
               : 'Waiting for Firestore listeners…'}
           </p>
         </div>

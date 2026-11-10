@@ -54,7 +54,12 @@ export function LiveCollectionTable({
         setError(null);
       },
       (err) => {
-        setError(err.message);
+        const msg = err.message || 'Listener failed';
+        setError(
+          /insufficient permissions|permission-denied/i.test(msg)
+            ? `${msg} — sign out and back in so admin claims refresh, then reload.`
+            : msg,
+        );
         setFreshAt(null);
       },
     );
