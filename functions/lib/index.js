@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.requestBookingChange = exports.refundPayment = exports.submitDriverDocument = exports.setDriverOnline = exports.updateLostItemStatus = exports.reportLostItem = exports.convertSupportToDispute = exports.createSupportCase = exports.documentExpiryJob = exports.unassignedAgingJob = exports.staleLocationsJob = exports.expireQuotesJob = exports.resolveGuestLink = exports.createGuestLink = exports.updateDriverLocation = exports.tripLifecycle = exports.finalizeDocumentEligibility = exports.reviewDriverDocument = exports.reviewVehicle = exports.ensureDemoCatalog = exports.adminAssignBooking = exports.driverCancelAssignment = exports.acceptOffer = exports.confirmBooking = exports.authorizePayment = exports.createQuote = exports.updateMyProfile = exports.ensureAdminAccess = exports.bootstrapAdmin = exports.provisionUser = void 0;
+exports.requestBookingChange = exports.refundPayment = exports.submitDriverDocument = exports.setDriverOnline = exports.updateLostItemStatus = exports.reportLostItem = exports.updateSupportCaseStatus = exports.postSupportMessage = exports.convertSupportToDispute = exports.createSupportCase = exports.documentExpiryJob = exports.unassignedAgingJob = exports.staleLocationsJob = exports.expireQuotesJob = exports.resolveGuestLink = exports.createGuestLink = exports.updateDriverLocation = exports.tripLifecycle = exports.finalizeDocumentEligibility = exports.reviewDriverDocument = exports.reviewVehicle = exports.ensureDemoCatalog = exports.adminAssignBooking = exports.driverCancelAssignment = exports.acceptOffer = exports.confirmBooking = exports.authorizePayment = exports.createQuote = exports.updateMyProfile = exports.ensureAdminAccess = exports.bootstrapAdmin = exports.provisionUser = void 0;
 const v2_1 = require("firebase-functions/v2");
 // Keep CPU low so a full Gen2 rollout stays within Cloud Run regional quota.
 (0, v2_1.setGlobalOptions)({
@@ -51,6 +51,10 @@ Object.defineProperty(exports, "documentExpiryJob", { enumerable: true, get: fun
 var createSupportCase_1 = require("./support/createSupportCase");
 Object.defineProperty(exports, "createSupportCase", { enumerable: true, get: function () { return createSupportCase_1.createSupportCase; } });
 Object.defineProperty(exports, "convertSupportToDispute", { enumerable: true, get: function () { return createSupportCase_1.convertSupportToDispute; } });
+var postSupportMessage_1 = require("./support/postSupportMessage");
+Object.defineProperty(exports, "postSupportMessage", { enumerable: true, get: function () { return postSupportMessage_1.postSupportMessage; } });
+var updateSupportCaseStatus_1 = require("./support/updateSupportCaseStatus");
+Object.defineProperty(exports, "updateSupportCaseStatus", { enumerable: true, get: function () { return updateSupportCaseStatus_1.updateSupportCaseStatus; } });
 var lostItem_1 = require("./support/lostItem");
 Object.defineProperty(exports, "reportLostItem", { enumerable: true, get: function () { return lostItem_1.reportLostItem; } });
 Object.defineProperty(exports, "updateLostItemStatus", { enumerable: true, get: function () { return lostItem_1.updateLostItemStatus; } });

@@ -245,7 +245,15 @@ service cloud.firestore {
     match /support_messages/{id} {
       allow read: if signedIn() && (
         resource.data.authorUid == uid() ||
-        hasClaimRole('ADMIN_SUPPORT') || isSuper()
+        resource.data.ownerUid == uid() ||
+        hasClaimRole('ADMIN_SUPPORT') ||
+        hasClaimRole('ADMIN_OPERATIONS') ||
+        isSuper() ||
+        (
+          resource.data.caseId is string &&
+          exists(/databases/$(database)/documents/support_cases/$(resource.data.caseId)) &&
+          get(/databases/$(database)/documents/support_cases/$(resource.data.caseId)).data.ownerUid == uid()
+        )
       );
       allow write: if false;
     }

@@ -1,9 +1,11 @@
 'use client';
 
+import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { collection, limit, onSnapshot, query } from 'firebase/firestore';
 import { AdminShell } from '@/components/AdminShell';
 import { getDb } from '@/lib/firebase';
+import { shortId } from '@/lib/format';
 
 type Driver = {
   uid: string;
@@ -12,6 +14,7 @@ type Driver = {
   onlineState?: string;
   driverType?: string;
   statusReason?: string;
+  currentVehicleId?: string;
 };
 
 export default function DriversPage() {
@@ -21,7 +24,8 @@ export default function DriversPage() {
 
   useEffect(() => {
     return onSnapshot(
-      query(collection(getDb(), 'drivers'), limit(50)),
+      query(collection(getDb(), 'drivers'), limit(80),
+      ),
       (snap) => {
         setRows(
           snap.docs.map((d) => {
@@ -30,60 +34,85 @@ export default function DriversPage() {
           }),
         );
         setFreshAt(new Date().toISOString());
+        setError(null);
       },
       (err) => setError(err.message),
     );
   }, []);
 
+  const online = rows.filter((d) => d.onlineState === 'ONLINE').length;
+
   return (
     <AdminShell title="Drivers">
-      <p className="page-lede">
-        Owner-driver focus this release. Fleet drivers are not managed here yet.
-      </p>
+      <div className="doc-hero">
+        <div>
+          <p className="eyebrow">Fleet partners</p>
+          <p className="page-lede" style={{ marginBottom: 0 }}>
+            Tap a driver for vehicle, documents, live map pin, and assigned
+            trips.
+          </p>
+        </div>
+        <div className="doc-stat-row">
+          <div className="doc-stat">
+            <strong>{online}</strong>
+            <span>Online</span>
+          </div>
+          <div className="doc-stat muted">
+            <strong>{rows.length}</strong>
+            <span>Total</span>
+          </div>
+        </div>
+      </div>
       <p className={`freshness${freshAt ? '' : ' warn'}`} role="status">
-        {freshAt ? `Data fresh at ${freshAt}` : 'Connecting…'}
+        {freshAt
+          ? `Fresh at ${new Date(freshAt).toLocaleTimeString()}`
+          : 'Connecting…'}
       </p>
       {error ? <p className="warn-text">{error}</p> : null}
+
       {rows.length === 0 ? (
-        <p className="empty-state">No drivers loaded.</p>
+        <div className="empty-visual">
+          <div className="empty-visual-mark" aria-hidden />
+          <h2>No drivers yet</h2>
+          <p>Driver app signups provision checklist + vehicle automatically.</p>
+        </div>
       ) : (
-        <div className="table-shell">
-          <table className="lux-table">
-            <thead>
-              <tr>
-                <th>Name</th>
-                <th>Status</th>
-                <th>Online</th>
-                <th>Type</th>
-                <th>Reason</th>
-              </tr>
-            </thead>
-            <tbody>
-              {rows.map((d) => (
-                <tr key={d.uid}>
-                  <td>
-                    <strong>{d.displayName ?? d.uid}</strong>
-                  </td>
-                  <td>
-                    <span
-                      className={`status-pill ${d.status === 'ACTIVE' ? 'ok' : 'warn'}`}
-                    >
-                      {d.status}
-                    </span>
-                  </td>
-                  <td>
-                    <span
-                      className={`status-pill ${d.onlineState === 'ONLINE' ? 'live' : ''}`}
-                    >
-                      {d.onlineState}
-                    </span>
-                  </td>
-                  <td>{d.driverType}</td>
-                  <td>{d.statusReason ?? '—'}</td>
-                </tr>
-              ))}
-            </tbody>
-          </table>
+        <div className="people-grid">
+          {rows.map((d) => (
+            <Link key={d.uid} href={`/drivers/${d.uid}`} className="people-card">
+              <div className="detail-avatar sm" aria-hidden>
+                {String(d.displayName ?? 'D')
+                  .slice(0, 1)
+                  .toUpperCase()}
+              </div>
+              <div>
+                <strong>{d.displayName ?? shortId(d.uid, 12)}</strong>
+                <div className="chip-row" style={{ margin: '0.35rem 0' }}>
+                  <span
+                    className={`status-pill ${
+                      d.status === 'ACTIVE' ? 'ok' : 'warn'
+                    }`}
+                  >
+                    {d.status}
+                  </span>
+                  <span
+                    className={`status-pill ${
+                      d.onlineState === 'ONLINE' ? 'live' : ''
+                    }`}
+                  >
+                    {d.onlineState}
+                  </span>
+                </div>
+                <small>
+                  {d.driverType ?? '—'}
+                  {d.currentVehicleId
+                    ? ` · veh ${shortId(d.currentVehicleId, 8)}`
+                    : ''}
+                </small>
+                {d.statusReason ? <small>{d.statusReason}</small> : null}
+              </div>
+            </Link>
+          ))}
         </div>
       )}
     </AdminShell>

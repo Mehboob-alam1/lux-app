@@ -100,11 +100,18 @@ exports.createSupportCase = (0, https_1.onCall)({ region: 'us-central1' }, async
         await firebase_1.db.collection('support_messages').doc(msgId).set({
             messageId: msgId,
             caseId,
+            ownerUid: ctx.uid,
             authorUid: ctx.uid,
+            authorRole: 'CUSTOMER',
             visibility: 'PUBLIC',
             body: message,
             createdAt: now,
         });
+        await firebase_1.db.collection('support_cases').doc(caseId).set({
+            lastMessageAt: now,
+            lastMessagePreview: message.slice(0, 120),
+            lastAuthorUid: ctx.uid,
+        }, { merge: true });
         (0, logger_1.logInfo)('support_opened', { caseId, priority });
         return { type: 'SUPPORT', caseId, analyticsHint: 'support_opened' };
     });

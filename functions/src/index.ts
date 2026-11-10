@@ -37,6 +37,9 @@ export {
   createSupportCase,
   convertSupportToDispute,
 } from './support/createSupportCase';
+export { postSupportMessage } from './support/postSupportMessage';
+export { updateSupportCaseStatus } from './support/updateSupportCaseStatus';
+
 export { reportLostItem, updateLostItemStatus } from './support/lostItem';
 export { setDriverOnline } from './drivers/setOnline';
 export { submitDriverDocument } from './drivers/submitDriverDocument';

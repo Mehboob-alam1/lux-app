@@ -232,41 +232,68 @@ export default function AssignmentPage() {
 
   return (
     <AdminShell title="Assignment & Rescue">
-      <p className="page-lede">
-        Live unassigned / reassigning bookings. Pick an ACTIVE driver and
-        APPROVED vehicle — `adminAssignBooking` enforces eligibility.
-      </p>
+      <div className="doc-hero">
+        <div>
+          <p className="eyebrow">Dispatch desk</p>
+          <p className="page-lede" style={{ marginBottom: 0 }}>
+            Bookings in ASSIGNMENT_PENDING or REASSIGNING. Assign an ACTIVE
+            driver with an APPROVED, docs-eligible vehicle.
+          </p>
+        </div>
+        <div className="doc-stat">
+          <strong>{rows.length}</strong>
+          <span>In queue</span>
+        </div>
+      </div>
       <div className="chip-row">
         <button type="button" className="chip" onClick={seedCatalog}>
           Ensure demo catalog
         </button>
+        <a href="/bookings" className="chip">
+          All bookings
+        </a>
+        <a href="/drivers" className="chip">
+          Drivers
+        </a>
       </div>
       {error ? <p className="warn-text">{error}</p> : null}
       {msg ? <p className="freshness">{msg}</p> : null}
 
       {rows.length === 0 ? (
-        <p className="empty-state">No unassigned / reassigning bookings.</p>
+        <div className="empty-visual">
+          <div className="empty-visual-mark" aria-hidden />
+          <h2>Rescue queue is clear</h2>
+          <p>
+            Nothing needs manual assignment right now. When a booking is
+            unassigned or a driver cancels, it appears here for rescue.
+          </p>
+        </div>
       ) : (
-        <div className="rescue-list">
+        <div className="booking-card-grid">
           {rows.map((b) => (
-            <article key={b.bookingId} className="panel rescue-card">
-              <div className="rescue-meta">
+            <article key={b.bookingId} className="booking-card">
+              <div className="booking-card-top">
                 <strong>{b.bookingId}</strong>
                 <span className="status-pill warn">{b.currentStatus}</span>
               </div>
-              <p className="page-lede" style={{ marginBottom: 0 }}>
-                {b.classId ?? '—'} · risk {b.riskState ?? 'NORMAL'}
-                {b.customerPriceMinor != null
-                  ? ` · ${(b.customerPriceMinor / 100).toFixed(2)} ${b.currency ?? ''}`
-                  : ''}
-              </p>
-              <button
-                type="button"
-                className="chip active"
-                onClick={() => openAssign(b)}
-              >
-                Assign / rescue
-              </button>
+              <div className="booking-card-meta">
+                <span>{b.classId ?? '—'}</span>
+                <span>risk {b.riskState ?? 'NORMAL'}</span>
+                <span>
+                  {b.customerPriceMinor != null
+                    ? `${(b.customerPriceMinor / 100).toFixed(2)} ${b.currency ?? ''}`
+                    : '—'}
+                </span>
+              </div>
+              <div className="booking-card-actions">
+                <button
+                  type="button"
+                  className="btn-primary"
+                  onClick={() => openAssign(b)}
+                >
+                  Assign / rescue
+                </button>
+              </div>
             </article>
           ))}
         </div>

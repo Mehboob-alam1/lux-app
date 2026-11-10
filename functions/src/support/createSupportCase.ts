@@ -125,11 +125,21 @@ export const createSupportCase = onCall(
         await db.collection('support_messages').doc(msgId).set({
           messageId: msgId,
           caseId,
+          ownerUid: ctx.uid,
           authorUid: ctx.uid,
+          authorRole: 'CUSTOMER',
           visibility: 'PUBLIC',
           body: message,
           createdAt: now,
         });
+        await db.collection('support_cases').doc(caseId).set(
+          {
+            lastMessageAt: now,
+            lastMessagePreview: message.slice(0, 120),
+            lastAuthorUid: ctx.uid,
+          },
+          { merge: true },
+        );
         logInfo('support_opened', { caseId, priority });
         return { type: 'SUPPORT', caseId, analyticsHint: 'support_opened' };
       },
