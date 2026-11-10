@@ -23,6 +23,7 @@
     "emulators": "firebase emulators:start --import=./.emulator-data --export-on-exit",
     "emulators:exec": "firebase emulators:exec --only auth,firestore,functions,storage",
     "seed": "npm run seed -w @lux/functions",
+    "seed:live-catalog": "node scripts/seed-live-catalog.mjs",
     "e2e:invariants": "node scripts/e2e-booking.mjs",
     "e2e:smoke": "node scripts/e2e-smoke.mjs",
     "format": "prettier -w \"**/*.{ts,tsx,js,json,md}\" --ignore-path .gitignore"

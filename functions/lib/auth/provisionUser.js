@@ -5,11 +5,75 @@ const https_1 = require("firebase-functions/v2/https");
 const https_2 = require("firebase-functions/v2/https");
 const firebase_1 = require("../firebase");
 const guards_1 = require("../security/guards");
+const documentChecklist_1 = require("../admin/documentChecklist");
+const ids_1 = require("../util/ids");
 const time_1 = require("../util/time");
 const logger_1 = require("../util/logger");
+async function createPendingVehicleAndDocs(input) {
+    const vehicleId = (0, ids_1.newId)('veh');
+    await firebase_1.db.collection('vehicles').doc(vehicleId).set({
+        vehicleId,
+        ownerDriverId: input.uid,
+        classIds: ['COMFORT', 'EXECUTIVE'],
+        capacityPassengers: 3,
+        capacityLuggage: 2,
+        make: 'Mercedes-Benz',
+        model: 'E-Class',
+        year: 2023,
+        plate: `LUX-${input.uid.slice(-4).toUpperCase()}`,
+        color: 'Black',
+        photoPaths: [],
+        status: 'PENDING',
+        inspectionStatus: 'PENDING',
+        documentEligibilityOk: false,
+        reviewChecklist: {
+            plateVerified: false,
+            classConfirmed: false,
+            photosReviewed: false,
+            inspectionPassed: false,
+        },
+        createdAt: input.now,
+        updatedAt: input.now,
+    });
+    const docs = (0, documentChecklist_1.buildPendingDocumentRows)({
+        driverId: input.uid,
+        vehicleId,
+        now: input.now,
+    });
+    const batch = firebase_1.db.batch();
+    for (const row of docs) {
+        batch.set(firebase_1.db.collection('driver_documents').doc(row.id), row.data);
+    }
+    await batch.commit();
+    await firebase_1.db.collection('drivers').doc(input.uid).set({
+        uid: input.uid,
+        status: 'PENDING',
+        driverType: 'OWNER_DRIVER',
+        displayName: input.displayName,
+        capabilities: ['AIRPORT'],
+        marketIds: input.marketIds,
+        currentVehicleId: vehicleId,
+        onlineState: 'OFFLINE',
+        readiness: {},
+        payoutAccountReference: null,
+        performance: { completionRate: 0.9, onTimeRate: 0.9 },
+        statusReason: 'Complete vehicle & documents checklist — await ops approval',
+        createdAt: input.now,
+        updatedAt: input.now,
+    });
+    await firebase_1.db.collection('driver_locations').doc(input.uid).set({
+        driverId: input.uid,
+        lat: 43.645,
+        lng: -79.38,
+        updatedAt: input.now,
+        stale: false,
+    });
+    (0, logger_1.logWarn)('driver_pending_review', { driverId: input.uid, vehicleId });
+    return { vehicleId, driverStatus: 'PENDING' };
+}
 /**
  * First-time profile provisioning after Firebase Auth sign-in.
- * Sets custom claims roles array and users/{uid} record.
+ * Drivers/vehicles/documents always start PENDING — ops must approve.
  */
 exports.provisionUser = (0, https_1.onCall)({ region: 'us-central1' }, async (request) => {
     (0, guards_1.assertAppCheck)(request);
@@ -23,7 +87,40 @@ exports.provisionUser = (0, https_1.onCall)({ region: 'us-central1' }, async (re
     }
     const existing = await firebase_1.db.collection('users').doc(uid).get();
     if (existing.exists) {
-        return { uid, alreadyProvisioned: true };
+        if (data.role === 'DRIVER') {
+            const driver = await firebase_1.db.collection('drivers').doc(uid).get();
+            if (!driver.exists) {
+                const now = (0, time_1.nowIso)();
+                const marketIds = data.marketIds?.length ? data.marketIds : ['yyz'];
+                const repaired = await createPendingVehicleAndDocs({
+                    uid,
+                    displayName: data.displayName,
+                    marketIds,
+                    now,
+                });
+                await firebase_1.auth.setCustomUserClaims(uid, { roles: ['DRIVER'] });
+                (0, logger_1.logInfo)('driver_profile_repaired', {
+                    driverStatus: repaired.driverStatus,
+                });
+                return {
+                    uid,
+                    alreadyProvisioned: true,
+                    repaired: true,
+                    driverStatus: repaired.driverStatus,
+                    vehicleId: repaired.vehicleId,
+                };
+            }
+            return {
+                uid,
+                alreadyProvisioned: true,
+                driverStatus: driver.data()?.status ?? null,
+            };
+        }
+        return {
+            uid,
+            alreadyProvisioned: true,
+            driverStatus: null,
+        };
     }
     const now = (0, time_1.nowIso)();
     const roles = [data.role];
@@ -57,27 +154,30 @@ exports.provisionUser = (0, https_1.onCall)({ region: 'us-central1' }, async (re
             updatedAt: now,
         });
     }
+    let driverStatus = null;
+    let vehicleId = null;
     if (data.role === 'DRIVER') {
-        await firebase_1.db.collection('drivers').doc(uid).set({
+        const created = await createPendingVehicleAndDocs({
             uid,
-            status: 'PENDING',
-            driverType: 'OWNER_DRIVER',
             displayName: data.displayName,
-            capabilities: [],
             marketIds,
-            currentVehicleId: null,
-            onlineState: 'OFFLINE',
-            readiness: {},
-            payoutAccountReference: null,
-            performance: {},
-            statusReason: 'Complete onboarding and await review',
-            createdAt: now,
-            updatedAt: now,
+            now,
         });
+        driverStatus = created.driverStatus;
+        vehicleId = created.vehicleId;
     }
     await firebase_1.auth.setCustomUserClaims(uid, { roles });
-    (0, logger_1.logInfo)('user_provisioned', { role: data.role });
-    return { uid, roles, alreadyProvisioned: false };
+    (0, logger_1.logInfo)('user_provisioned', {
+        role: data.role,
+        driverStatus: driverStatus ?? undefined,
+    });
+    return {
+        uid,
+        roles,
+        alreadyProvisioned: false,
+        driverStatus,
+        vehicleId,
+    };
 });
 /** Emulator/dev only: seed admin claims. Disabled unless ALLOW_ADMIN_BOOTSTRAP=true */
 exports.bootstrapAdmin = (0, https_2.onRequest)({ region: 'us-central1' }, async (req, res) => {
@@ -101,6 +201,7 @@ exports.bootstrapAdmin = (0, https_2.onRequest)({ region: 'us-central1' }, async
         updatedAt: now,
     }, { merge: true });
     await firebase_1.auth.setCustomUserClaims(uid, { roles });
+    (0, logger_1.logInfo)('admin_bootstrapped', { uid });
     res.json({ ok: true, uid, roles });
 });
 //# sourceMappingURL=provisionUser.js.map

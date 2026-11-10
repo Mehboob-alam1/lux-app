@@ -1,12 +1,39 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:go_router/go_router.dart';
+
+import '../services/app_prefs.dart';
 import '../services/firebase_bootstrap.dart';
 import '../theme/lux_colors.dart';
 import '../widgets/lux_chrome.dart';
 
-class SplashScreen extends StatelessWidget {
+class SplashScreen extends StatefulWidget {
   const SplashScreen({super.key});
+
+  @override
+  State<SplashScreen> createState() => _SplashScreenState();
+}
+
+class _SplashScreenState extends State<SplashScreen> {
+  bool _routing = false;
+
+  Future<void> _continue() async {
+    if (_routing) return;
+    setState(() => _routing = true);
+    try {
+      final signedIn = FirebaseAuth.instance.currentUser != null;
+      if (signedIn) {
+        if (!mounted) return;
+        context.go('/home');
+        return;
+      }
+      final done = await AppPrefs.hasCompletedOnboarding();
+      if (!mounted) return;
+      context.go(done ? '/auth' : '/onboarding');
+    } finally {
+      if (mounted) setState(() => _routing = false);
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -53,8 +80,9 @@ class SplashScreen extends StatelessWidget {
               ),
               const Spacer(flex: 4),
               LuxPrimaryButton(
-                label: signedIn ? 'Continue' : 'Sign in',
-                onPressed: () => context.go(signedIn ? '/home' : '/auth'),
+                label: signedIn ? 'Continue' : 'Get started',
+                loading: _routing,
+                onPressed: _continue,
               ),
               if (FirebaseBootstrap.initError != null) ...[
                 const SizedBox(height: 12),

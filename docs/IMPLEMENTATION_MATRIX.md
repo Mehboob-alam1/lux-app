@@ -3,10 +3,14 @@
 **Status legend:** `NOT_STARTED` | `PARTIAL` | `DONE` | `BLOCKED`  
 **Rule:** Never mark `DONE` without automated or documented manual E2E evidence for release-critical paths.
 
-Updated: 2026-11-03 (Customer+Driver UI/wiring landed; emulator E2E still blocked on Java)
+Updated: 2026-11-09 (Enterprise UI Phase 1–2 started: design system tokens + form/snackbar components; live functions deployed)
 
 | ID | Requirement | Status | Notes |
 |----|-------------|--------|-------|
+| UX1 design system tokens | PARTIAL | Flutter customer+driver + admin CSS aligned |
+| UX2 form/snackbar components | PARTIAL | LuxTextField, LuxFeedback, chrome buttons |
+| UX3 onboarding/profile CRUD | DONE | updateMyProfile CF + onboarding + profile prefs |
+| UX4 maps/places | PARTIAL | map-ready preview + catalog search always; Static Maps/Places when key via dart-define; no native Maps SDK until key in CI |
 | P0 scaffold / docs / placeholders | DONE | |
 | C1–C5 contracts / dictionary / APIs | DONE | unit tests ✓ |
 | S1–S4 rules + guards | PARTIAL | written; emulator rules tests pending |

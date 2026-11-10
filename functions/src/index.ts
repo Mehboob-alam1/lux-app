@@ -25,6 +25,9 @@ export {
   finalizeDocumentEligibility,
 } from './admin/reviewDocuments';
 export { tripLifecycle } from './trips/lifecycle';
+export { postTripMessage } from './trips/postTripMessage';
+export { registerDeviceToken } from './notifications/registerDeviceToken';
+
 export { updateDriverLocation } from './locations/updateDriverLocation';
 export { createGuestLink, resolveGuestLink } from './guests/guestLink';
 export {

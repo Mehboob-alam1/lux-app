@@ -19,7 +19,8 @@ pluginManagement {
 
 plugins {
     id("dev.flutter.flutter-plugin-loader") version "1.0.0"
-    id("com.android.application") version "9.1.0" apply false
+    // AGP 8.13.0 — max supported by current Android Studio (AGP 9.x needs newer AS).
+    id("com.android.application") version "8.13.0" apply false
     // START: FlutterFire Configuration
     id("com.google.gms.google-services") version("4.4.4") apply false
     // END: FlutterFire Configuration

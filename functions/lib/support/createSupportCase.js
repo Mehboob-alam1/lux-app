@@ -84,9 +84,15 @@ exports.createSupportCase = (0, https_1.onCall)({ region: 'us-central1' }, async
         }
         const caseId = (0, ids_1.newId)('sup');
         const now = (0, time_1.nowIso)();
+        const ownerRole = ctx.roles.includes('DRIVER')
+            ? 'DRIVER'
+            : ctx.roles.includes('CUSTOMER')
+                ? 'CUSTOMER'
+                : 'CUSTOMER';
         await firebase_1.db.collection('support_cases').doc(caseId).set({
             caseId,
             ownerUid: ctx.uid,
+            ownerRole,
             bookingId: bookingId ?? null,
             category,
             subject,
@@ -102,7 +108,7 @@ exports.createSupportCase = (0, https_1.onCall)({ region: 'us-central1' }, async
             caseId,
             ownerUid: ctx.uid,
             authorUid: ctx.uid,
-            authorRole: 'CUSTOMER',
+            authorRole: ownerRole,
             visibility: 'PUBLIC',
             body: message,
             createdAt: now,

@@ -26,6 +26,14 @@
 	<string>$(FLUTTER_BUILD_NUMBER)</string>
 	<key>LSRequiresIPhoneOS</key>
 	<true/>
+	<key>NSPhotoLibraryUsageDescription</key>
+	<string>LUX Driver needs photo access so you can upload licence, insurance, and vehicle documents.</string>
+	<key>NSCameraUsageDescription</key>
+	<string>LUX Driver needs the camera so you can photograph documents for compliance review.</string>
+	<key>NSLocationWhenInUseUsageDescription</key>
+	<string>LUX Driver needs your location to go online, receive offers, and update trip progress.</string>
+	<key>NSLocationAlwaysAndWhenInUseUsageDescription</key>
+	<string>LUX Driver uses location while you are on an active trip to keep riders and ops updated.</string>
 	<key>UIApplicationSceneManifest</key>
 	<dict>
 		<key>UIApplicationSupportsMultipleScenes</key>
@@ -53,6 +61,12 @@
 	<string>LaunchScreen</string>
 	<key>UIMainStoryboardFile</key>
 	<string>Main</string>
+	<key>UIBackgroundModes</key>
+	<array>
+		<string>fetch</string>
+		<string>remote-notification</string>
+		<string>location</string>
+	</array>
 	<key>UISupportedInterfaceOrientations</key>
 	<array>
 		<string>UIInterfaceOrientationPortrait</string>

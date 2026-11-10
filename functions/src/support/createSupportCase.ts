@@ -109,9 +109,15 @@ export const createSupportCase = onCall(
 
         const caseId = newId('sup');
         const now = nowIso();
+        const ownerRole = ctx.roles.includes('DRIVER')
+          ? 'DRIVER'
+          : ctx.roles.includes('CUSTOMER')
+            ? 'CUSTOMER'
+            : 'CUSTOMER';
         await db.collection('support_cases').doc(caseId).set({
           caseId,
           ownerUid: ctx.uid,
+          ownerRole,
           bookingId: bookingId ?? null,
           category,
           subject,
@@ -127,7 +133,7 @@ export const createSupportCase = onCall(
           caseId,
           ownerUid: ctx.uid,
           authorUid: ctx.uid,
-          authorRole: 'CUSTOMER',
+          authorRole: ownerRole,
           visibility: 'PUBLIC',
           body: message,
           createdAt: now,

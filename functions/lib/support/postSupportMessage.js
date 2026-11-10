@@ -42,12 +42,17 @@ exports.postSupportMessage = (0, https_1.onCall)({ region: 'us-central1' }, asyn
     }
     const now = (0, time_1.nowIso)();
     const messageId = (0, ids_1.newId)('smsg');
+    const authorRole = admin
+        ? 'ADMIN'
+        : ctx.roles.includes('DRIVER')
+            ? 'DRIVER'
+            : 'CUSTOMER';
     await firebase_1.db.collection('support_messages').doc(messageId).set({
         messageId,
         caseId,
         ownerUid: supportCase.ownerUid,
         authorUid: ctx.uid,
-        authorRole: admin ? 'ADMIN' : 'CUSTOMER',
+        authorRole,
         visibility,
         body: body.trim(),
         createdAt: now,

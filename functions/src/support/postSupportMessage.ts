@@ -49,12 +49,17 @@ export const postSupportMessage = onCall(
 
     const now = nowIso();
     const messageId = newId('smsg');
+    const authorRole = admin
+      ? 'ADMIN'
+      : ctx.roles.includes('DRIVER')
+        ? 'DRIVER'
+        : 'CUSTOMER';
     await db.collection('support_messages').doc(messageId).set({
       messageId,
       caseId,
       ownerUid: supportCase.ownerUid,
       authorUid: ctx.uid,
-      authorRole: admin ? 'ADMIN' : 'CUSTOMER',
+      authorRole,
       visibility,
       body: body.trim(),
       createdAt: now,

@@ -10,8 +10,8 @@ final bookingDraftProvider =
 });
 
 class BookingDraftController extends ChangeNotifier {
-  Place? pickup = LuxCatalog.pickupSuggestions.first;
-  Place? dropoff = LuxCatalog.dropoffSuggestions.first;
+  Place? pickup;
+  Place? dropoff;
   DateTime scheduledAt = DateTime.now().add(const Duration(hours: 3));
   String vehicleClassId = 'COMFORT';
   int passengers = 2;

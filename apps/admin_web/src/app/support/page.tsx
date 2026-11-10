@@ -74,10 +74,10 @@ export default function SupportPage() {
     <AdminShell title="Help & Support">
       <div className="doc-hero">
         <div>
-          <p className="eyebrow">Customer care</p>
+          <p className="eyebrow">Ops care desk</p>
           <p className="page-lede" style={{ marginBottom: 0 }}>
-            Open a case to chat with the rider. Safety incidents stay separate
-            and critical.
+            Live chats from customers and drivers. Safety incidents stay
+            separate and critical.
           </p>
         </div>
         <div className="doc-stat">
@@ -116,7 +116,10 @@ export default function SupportPage() {
         {cases.length === 0 ? (
           <div className="empty-visual compact">
             <h2>No support cases yet</h2>
-            <p>When a customer opens Help in the app, the thread lands here.</p>
+            <p>
+              When a customer or driver opens Help in the app, the thread lands
+              here.
+            </p>
           </div>
         ) : (
           <div className="chat-inbox">
@@ -146,7 +149,7 @@ export default function SupportPage() {
                     {c.lastMessagePreview ?? c.category ?? 'Tap to open chat'}
                   </p>
                   <small>
-                    Case {shortId(c.caseId, 12)} · Customer{' '}
+                    Case {shortId(c.caseId, 12)} · User{' '}
                     {shortId(c.ownerUid, 8)}
                     {c.bookingId ? ` · Booking ${shortId(c.bookingId, 10)}` : ''}
                     {' · '}

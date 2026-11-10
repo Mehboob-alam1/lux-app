@@ -57,7 +57,6 @@ class DefaultFirebaseOptions {
     databaseURL: 'https://uberclone-6e4a0-default-rtdb.firebaseio.com',
     storageBucket: 'uberclone-6e4a0.firebasestorage.app',
   );
-
   static const FirebaseOptions ios = FirebaseOptions(
     apiKey: 'AIzaSyAv0CR6Qio5FrsrKzMm5Ylclk9cFIFIWuE',
     appId: '1:530001348279:ios:1ca7f10ac22335d22baf32',

@@ -258,6 +258,19 @@ service cloud.firestore {
       allow write: if false;
     }
 
+    // Customer ↔ driver trip chat
+    // List queries must include customerUid==uid() or driverId==uid()
+    // (or authorUid==uid()) so they align with these rules.
+    match /trip_messages/{id} {
+      allow read: if signedIn() && (
+        resource.data.customerUid == uid() ||
+        resource.data.driverId == uid() ||
+        resource.data.authorUid == uid() ||
+        isAdmin()
+      );
+      allow write: if false;
+    }
+
     match /lost_items/{id} {
       allow read: if signedIn() && (
         resource.data.reporterUid == uid() ||

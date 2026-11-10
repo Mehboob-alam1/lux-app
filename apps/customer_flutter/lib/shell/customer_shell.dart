@@ -8,23 +8,22 @@ class CustomerShell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Use centerFloat (not centerDocked): docked FAB expects a BottomAppBar
+    // notch and can hit-test before layout during navigation transitions.
     return Scaffold(
       backgroundColor: LuxColors.background,
       body: navigationShell,
-      floatingActionButtonLocation: FloatingActionButtonLocation.centerDocked,
-      floatingActionButton: Padding(
-        padding: const EdgeInsets.only(bottom: 8),
-        child: FloatingActionButton.extended(
-          onPressed: () => context.push('/book'),
-          backgroundColor: LuxColors.lime,
-          foregroundColor: LuxColors.ink,
-          elevation: 2,
-          label: const Text(
-            'Book',
-            style: TextStyle(fontWeight: FontWeight.w800),
-          ),
-          icon: const Icon(Icons.add_rounded),
+      floatingActionButtonLocation: FloatingActionButtonLocation.centerFloat,
+      floatingActionButton: FloatingActionButton.extended(
+        onPressed: () => context.push('/book'),
+        backgroundColor: LuxColors.lime,
+        foregroundColor: LuxColors.ink,
+        elevation: 3,
+        label: const Text(
+          'Book',
+          style: TextStyle(fontWeight: FontWeight.w800),
         ),
+        icon: const Icon(Icons.add_rounded),
       ),
       bottomNavigationBar: NavigationBar(
         selectedIndex: navigationShell.currentIndex,

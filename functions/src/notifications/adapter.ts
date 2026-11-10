@@ -1,4 +1,4 @@
-import { db } from '../firebase';
+import { db, admin } from '../firebase';
 import { newId } from '../util/ids';
 import { nowIso } from '../util/time';
 import { logInfo, logError } from '../util/logger';
@@ -16,8 +16,7 @@ export type NotifyInput = {
 };
 
 /**
- * Push primary via FCM when tokens exist; SMS/email fallback only if configured.
- * Never pretends delivery succeeded without an attempt log.
+ * Push via real FCM when device tokens exist. Always writes attempt ledger.
  */
 export async function sendNotification(input: NotifyInput): Promise<{
   notificationId: string;
@@ -27,6 +26,12 @@ export async function sendNotification(input: NotifyInput): Promise<{
   const now = nowIso();
   const attempts: { channel: NotifyChannel; status: string }[] = [];
 
+  const data: Record<string, string> = {
+    template: input.template,
+    ...(input.bookingId ? { bookingId: input.bookingId } : {}),
+    ...(input.data ?? {}),
+  };
+
   const tokens = await db
     .collection('device_tokens')
     .where('userId', '==', input.userId)
@@ -35,20 +40,88 @@ export async function sendNotification(input: NotifyInput): Promise<{
     .get();
 
   if (!tokens.empty) {
-    // FCM send would use admin.messaging() when credentials present
-    const hasCreds = Boolean(process.env.GCLOUD_PROJECT);
-    const status = hasCreds ? 'QUEUED_FCM' : 'SKIPPED_NO_FCM_RUNTIME';
-    attempts.push({ channel: 'FCM', status });
-    for (const t of tokens.docs) {
-      const attemptId = newId('nta');
-      await db.collection('notification_attempts').doc(attemptId).set({
-        attemptId,
-        notificationId,
-        channel: 'FCM',
-        tokenId: t.id,
-        status,
-        createdAt: now,
-      });
+    const tokenList = tokens.docs
+      .map((d) => String(d.data().token ?? ''))
+      .filter((t) => t.length > 10);
+
+    if (tokenList.length === 0) {
+      attempts.push({ channel: 'FCM', status: 'NO_DEVICE_TOKEN' });
+    } else {
+      try {
+        const res = await admin.messaging().sendEachForMulticast({
+          tokens: tokenList,
+          notification: {
+            title: input.title,
+            body: input.body,
+          },
+          data,
+          android: {
+            priority: 'high',
+            notification: {
+              clickAction: 'FLUTTER_NOTIFICATION_CLICK',
+              sound: 'default',
+            },
+          },
+          apns: {
+            payload: {
+              aps: {
+                sound: 'default',
+                contentAvailable: true,
+              },
+            },
+          },
+        });
+
+        for (let i = 0; i < tokens.docs.length; i++) {
+          const doc = tokens.docs[i];
+          const raw = String(doc.data().token ?? '');
+          const idx = tokenList.indexOf(raw);
+          const ok = idx >= 0 ? res.responses[idx]?.success === true : false;
+          const errCode =
+            idx >= 0
+              ? String(
+                  (res.responses[idx]?.error as { code?: string } | undefined)
+                    ?.code ?? '',
+                )
+              : '';
+          const status = ok
+            ? 'SENT'
+            : errCode.includes('registration-token-not-registered') ||
+                errCode.includes('invalid-registration-token')
+              ? 'INVALID_TOKEN'
+              : 'FAILED';
+
+          if (status === 'INVALID_TOKEN') {
+            await doc.ref.set(
+              { active: false, updatedAt: now, deactivatedReason: errCode },
+              { merge: true },
+            );
+          }
+
+          const attemptId = newId('nta');
+          await db.collection('notification_attempts').doc(attemptId).set({
+            attemptId,
+            notificationId,
+            channel: 'FCM',
+            tokenId: doc.id,
+            status,
+            errorCode: errCode || null,
+            createdAt: now,
+          });
+          attempts.push({ channel: 'FCM', status });
+        }
+      } catch (e) {
+        const msg = e instanceof Error ? e.message : String(e);
+        attempts.push({ channel: 'FCM', status: 'SEND_ERROR' });
+        await db.collection('notification_attempts').doc(newId('nta')).set({
+          notificationId,
+          channel: 'FCM',
+          status: 'SEND_ERROR',
+          error: msg.slice(0, 400),
+          createdAt: now,
+        });
+        logError('fcm_send_error', { notificationId, error: msg });
+      }
     }
   } else {
     attempts.push({ channel: 'FCM', status: 'NO_DEVICE_TOKEN' });
@@ -88,6 +161,7 @@ export async function sendNotification(input: NotifyInput): Promise<{
     title: input.title,
     body: input.body,
     bookingId: input.bookingId ?? null,
+    data,
     critical: Boolean(input.critical),
     attempts,
     createdAt: now,
@@ -97,6 +171,7 @@ export async function sendNotification(input: NotifyInput): Promise<{
     notificationId,
     template: input.template,
     attemptCount: attempts.length,
+    sent: attempts.filter((a) => a.status === 'SENT').length,
   });
   return { notificationId, attempts };
 }
@@ -108,6 +183,7 @@ export async function notifyBookingEvent(input: {
   title: string;
   body: string;
   critical?: boolean;
+  data?: Record<string, string>;
 }): Promise<void> {
   try {
     await sendNotification({
@@ -117,11 +193,13 @@ export async function notifyBookingEvent(input: {
       title: input.title,
       body: input.body,
       critical: input.critical,
+      data: input.data,
     });
   } catch (e) {
     logError('notification_failed', {
       bookingId: input.bookingId,
       template: input.template,
+      error: e instanceof Error ? e.message : String(e),
     });
   }
 }

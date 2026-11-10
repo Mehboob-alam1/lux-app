@@ -1,6 +1,6 @@
 "use strict";
 Object.defineProperty(exports, "__esModule", { value: true });
-exports.requestBookingChange = exports.refundPayment = exports.submitDriverDocument = exports.setDriverOnline = exports.updateLostItemStatus = exports.reportLostItem = exports.updateSupportCaseStatus = exports.postSupportMessage = exports.convertSupportToDispute = exports.createSupportCase = exports.documentExpiryJob = exports.unassignedAgingJob = exports.staleLocationsJob = exports.expireQuotesJob = exports.resolveGuestLink = exports.createGuestLink = exports.updateDriverLocation = exports.tripLifecycle = exports.finalizeDocumentEligibility = exports.reviewDriverDocument = exports.reviewVehicle = exports.ensureDemoCatalog = exports.adminAssignBooking = exports.driverCancelAssignment = exports.acceptOffer = exports.confirmBooking = exports.authorizePayment = exports.createQuote = exports.updateMyProfile = exports.ensureAdminAccess = exports.bootstrapAdmin = exports.provisionUser = void 0;
+exports.requestBookingChange = exports.refundPayment = exports.submitDriverDocument = exports.setDriverOnline = exports.updateLostItemStatus = exports.reportLostItem = exports.updateSupportCaseStatus = exports.postSupportMessage = exports.convertSupportToDispute = exports.createSupportCase = exports.documentExpiryJob = exports.unassignedAgingJob = exports.staleLocationsJob = exports.expireQuotesJob = exports.resolveGuestLink = exports.createGuestLink = exports.updateDriverLocation = exports.registerDeviceToken = exports.postTripMessage = exports.tripLifecycle = exports.finalizeDocumentEligibility = exports.reviewDriverDocument = exports.reviewVehicle = exports.ensureDemoCatalog = exports.adminAssignBooking = exports.driverCancelAssignment = exports.acceptOffer = exports.confirmBooking = exports.authorizePayment = exports.createQuote = exports.updateMyProfile = exports.ensureAdminAccess = exports.bootstrapAdmin = exports.provisionUser = void 0;
 const v2_1 = require("firebase-functions/v2");
 // Keep CPU low so a full Gen2 rollout stays within Cloud Run regional quota.
 (0, v2_1.setGlobalOptions)({
@@ -38,6 +38,10 @@ Object.defineProperty(exports, "reviewDriverDocument", { enumerable: true, get: 
 Object.defineProperty(exports, "finalizeDocumentEligibility", { enumerable: true, get: function () { return reviewDocuments_1.finalizeDocumentEligibility; } });
 var lifecycle_1 = require("./trips/lifecycle");
 Object.defineProperty(exports, "tripLifecycle", { enumerable: true, get: function () { return lifecycle_1.tripLifecycle; } });
+var postTripMessage_1 = require("./trips/postTripMessage");
+Object.defineProperty(exports, "postTripMessage", { enumerable: true, get: function () { return postTripMessage_1.postTripMessage; } });
+var registerDeviceToken_1 = require("./notifications/registerDeviceToken");
+Object.defineProperty(exports, "registerDeviceToken", { enumerable: true, get: function () { return registerDeviceToken_1.registerDeviceToken; } });
 var updateDriverLocation_1 = require("./locations/updateDriverLocation");
 Object.defineProperty(exports, "updateDriverLocation", { enumerable: true, get: function () { return updateDriverLocation_1.updateDriverLocation; } });
 var guestLink_1 = require("./guests/guestLink");

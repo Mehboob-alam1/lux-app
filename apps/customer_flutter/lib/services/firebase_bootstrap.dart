@@ -7,6 +7,9 @@ import 'package:firebase_core/firebase_core.dart';
 import 'package:flutter/foundation.dart';
 
 import '../firebase_options.dart';
+import '../maps/lux_map_config.dart';
+import 'lux_logger.dart';
+import 'remote_config_service.dart';
 
 class FirebaseBootstrap {
   static bool ready = false;
@@ -35,17 +38,24 @@ class FirebaseBootstrap {
         await _connectEmulators();
         usingEmulators = true;
       }
+      // Maps keys: Remote Config + baked fallback so previews always work.
+      if (!emulators) {
+        await RemoteConfigService.init();
+      } else {
+        LuxMapConfig.ensureFallback();
+      }
       ready = true;
       initError = null;
-      debugPrint(
-        'Firebase ready (emulators=$usingEmulators '
-        'project=${DefaultFirebaseOptions.currentPlatform.projectId} '
-        'host=$emulatorHost)',
-      );
+      LuxLogger.info('firebase_ready', {
+        'emulators': usingEmulators,
+        'project': DefaultFirebaseOptions.currentPlatform.projectId,
+        'host': emulatorHost,
+        'mapsSource': usingEmulators ? 'emulator' : 'remote_config',
+      });
     } catch (e, st) {
       initError = e.toString();
       ready = false;
-      debugPrint('Firebase init failed: $e\n$st');
+      LuxLogger.error('firebase_init_failed', const {}, e, st);
     }
   }
 

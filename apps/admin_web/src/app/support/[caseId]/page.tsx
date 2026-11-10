@@ -24,8 +24,10 @@ type SupportCase = {
   priority?: string;
   category?: string;
   ownerUid?: string;
+  ownerRole?: string;
   bookingId?: string | null;
   context?: Record<string, unknown>;
+  lastMessagePreview?: string;
 };
 
 type Message = {
@@ -46,16 +48,32 @@ const STATUSES = [
   'CLOSED',
 ] as const;
 
+function roleLabel(role?: string, mine?: boolean) {
+  if (mine) return 'You';
+  switch (role) {
+    case 'ADMIN':
+      return 'Ops';
+    case 'DRIVER':
+      return 'Driver';
+    case 'CUSTOMER':
+      return 'Customer';
+    default:
+      return 'User';
+  }
+}
+
 export default function SupportCasePage() {
   const { caseId } = useParams<{ caseId: string }>();
   const { user } = useAuth();
   const [supportCase, setSupportCase] = useState<SupportCase | null>(null);
   const [messages, setMessages] = useState<Message[]>([]);
   const [body, setBody] = useState('');
+  const [internalNote, setInternalNote] = useState(false);
   const [busy, setBusy] = useState(false);
   const [msg, setMsg] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
   const bottomRef = useRef<HTMLDivElement | null>(null);
+  const composerRef = useRef<HTMLTextAreaElement | null>(null);
 
   useEffect(() => {
     const unsubCase = onSnapshot(
@@ -103,8 +121,14 @@ export default function SupportCasePage() {
     setMsg(null);
     try {
       const fn = httpsCallable(getFirebaseFunctions(), 'postSupportMessage');
-      await fn({ caseId, body: body.trim(), visibility: 'PUBLIC' });
+      await fn({
+        caseId,
+        body: body.trim(),
+        visibility: internalNote ? 'INTERNAL' : 'PUBLIC',
+      });
       setBody('');
+      setInternalNote(false);
+      composerRef.current?.focus();
     } catch (err) {
       setMsg(err instanceof Error ? err.message : String(err));
     } finally {
@@ -129,6 +153,8 @@ export default function SupportCasePage() {
     }
   }
 
+  const ownerIsDriver = supportCase?.ownerRole === 'DRIVER';
+
   return (
     <AdminShell title="Support chat">
       <div className="chat-toolbar">
@@ -137,10 +163,14 @@ export default function SupportCasePage() {
         </Link>
         {supportCase?.ownerUid ? (
           <Link
-            href={`/customers/${supportCase.ownerUid}`}
+            href={
+              ownerIsDriver
+                ? `/drivers/${supportCase.ownerUid}`
+                : `/customers/${supportCase.ownerUid}`
+            }
             className="btn-ghost"
           >
-            Customer profile
+            {ownerIsDriver ? 'Driver profile' : 'Customer profile'}
           </Link>
         ) : null}
         {supportCase?.bookingId ? (
@@ -163,10 +193,14 @@ export default function SupportCasePage() {
           <section className="chat-thread panel">
             <header className="chat-thread-head">
               <div>
-                <p className="eyebrow">{supportCase.category ?? 'SUPPORT'}</p>
+                <p className="eyebrow">
+                  {supportCase.category ?? 'SUPPORT'}
+                  {ownerIsDriver ? ' · DRIVER' : ' · CUSTOMER'}
+                </p>
                 <h2>{supportCase.subject}</h2>
                 <p className="doc-meta">
-                  {shortId(caseId, 14)} · {supportCase.priority} · customer{' '}
+                  {shortId(caseId, 14)} · {supportCase.priority} ·{' '}
+                  {ownerIsDriver ? 'driver' : 'customer'}{' '}
                   {shortId(supportCase.ownerUid, 8)}
                 </p>
               </div>
@@ -175,19 +209,20 @@ export default function SupportCasePage() {
 
             <div className="chat-messages">
               {messages.length === 0 ? (
-                <p className="empty-state">No messages yet.</p>
+                <p className="empty-state">No messages yet — send the first reply.</p>
               ) : (
                 messages.map((m) => {
                   const mine = m.authorUid === user?.uid;
-                  const adminBubble = m.authorRole === 'ADMIN' || mine;
+                  const opsBubble = m.authorRole === 'ADMIN' || mine;
+                  const isInternal = m.visibility === 'INTERNAL';
                   return (
                     <div
                       key={m.messageId}
-                      className={`chat-bubble${adminBubble ? ' admin' : ' customer'}`}
+                      className={`chat-bubble${opsBubble ? ' admin' : ' customer'}${isInternal ? ' internal' : ''}`}
                     >
                       <div className="chat-bubble-meta">
-                        {adminBubble ? 'Ops' : 'Customer'} · {when(m.createdAt)}
-                        {m.visibility === 'INTERNAL' ? ' · internal' : ''}
+                        {roleLabel(m.authorRole, mine)} · {when(m.createdAt)}
+                        {isInternal ? ' · internal note' : ''}
                       </div>
                       <p>{m.body}</p>
                     </div>
@@ -199,19 +234,41 @@ export default function SupportCasePage() {
 
             <form className="chat-composer" onSubmit={send}>
               <textarea
+                ref={composerRef}
                 value={body}
                 onChange={(e) => setBody(e.target.value)}
-                placeholder="Write a reply to the customer…"
+                onKeyDown={(e) => {
+                  if (e.key === 'Enter' && !e.shiftKey) {
+                    e.preventDefault();
+                    void send(e);
+                  }
+                }}
+                placeholder={
+                  internalNote
+                    ? 'Internal note (not visible to the user)…'
+                    : 'Write a public reply…'
+                }
                 rows={3}
                 disabled={busy}
               />
-              <button
-                type="submit"
-                className="btn-primary"
-                disabled={busy || !body.trim()}
-              >
-                {busy ? 'Sending…' : 'Send reply'}
-              </button>
+              <div className="chat-composer-actions">
+                <label className="chat-internal-toggle">
+                  <input
+                    type="checkbox"
+                    checked={internalNote}
+                    onChange={(e) => setInternalNote(e.target.checked)}
+                    disabled={busy}
+                  />
+                  Internal note
+                </label>
+                <button
+                  type="submit"
+                  className="btn-primary"
+                  disabled={busy || !body.trim()}
+                >
+                  {busy ? 'Sending…' : internalNote ? 'Add note' : 'Send reply'}
+                </button>
+              </div>
             </form>
           </section>
 
@@ -226,13 +283,13 @@ export default function SupportCasePage() {
                   disabled={busy}
                   onClick={() => setStatus(s)}
                 >
-                  {s}
+                  {s.replaceAll('_', ' ')}
                 </button>
               ))}
             </div>
             <div className="chat-side-meta">
               <div>
-                <span>Customer</span>
+                <span>{ownerIsDriver ? 'Driver' : 'Customer'}</span>
                 <strong>{shortId(supportCase.ownerUid, 12)}</strong>
               </div>
               <div>
@@ -240,10 +297,14 @@ export default function SupportCasePage() {
                 <strong>{shortId(supportCase.bookingId, 12)}</strong>
               </div>
               <div>
-                <span>Driver</span>
+                <span>Assigned driver</span>
                 <strong>
                   {shortId(String(supportCase.context?.driverId ?? ''), 12)}
                 </strong>
+              </div>
+              <div>
+                <span>Priority</span>
+                <strong>{supportCase.priority ?? 'NORMAL'}</strong>
               </div>
             </div>
           </aside>

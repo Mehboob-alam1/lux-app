@@ -3,8 +3,10 @@ import { onRequest } from 'firebase-functions/v2/https';
 import { Role } from '@lux/contracts';
 import { auth, db } from '../firebase';
 import { assertAppCheck } from '../security/guards';
+import { buildPendingDocumentRows } from '../admin/documentChecklist';
+import { newId } from '../util/ids';
 import { nowIso } from '../util/time';
-import { logInfo } from '../util/logger';
+import { logInfo, logWarn } from '../util/logger';
 
 type ProvisionInput = {
   role: 'CUSTOMER' | 'DRIVER';
@@ -13,9 +15,81 @@ type ProvisionInput = {
   consentVersions?: Record<string, string>;
 };
 
+async function createPendingVehicleAndDocs(input: {
+  uid: string;
+  displayName: string;
+  marketIds: string[];
+  now: string;
+}): Promise<{ vehicleId: string; driverStatus: string }> {
+  const vehicleId = newId('veh');
+  await db.collection('vehicles').doc(vehicleId).set({
+    vehicleId,
+    ownerDriverId: input.uid,
+    classIds: ['COMFORT', 'EXECUTIVE'],
+    capacityPassengers: 3,
+    capacityLuggage: 2,
+    make: 'Mercedes-Benz',
+    model: 'E-Class',
+    year: 2023,
+    plate: `LUX-${input.uid.slice(-4).toUpperCase()}`,
+    color: 'Black',
+    photoPaths: [],
+    status: 'PENDING',
+    inspectionStatus: 'PENDING',
+    documentEligibilityOk: false,
+    reviewChecklist: {
+      plateVerified: false,
+      classConfirmed: false,
+      photosReviewed: false,
+      inspectionPassed: false,
+    },
+    createdAt: input.now,
+    updatedAt: input.now,
+  });
+
+  const docs = buildPendingDocumentRows({
+    driverId: input.uid,
+    vehicleId,
+    now: input.now,
+  });
+  const batch = db.batch();
+  for (const row of docs) {
+    batch.set(db.collection('driver_documents').doc(row.id), row.data);
+  }
+  await batch.commit();
+
+  await db.collection('drivers').doc(input.uid).set({
+    uid: input.uid,
+    status: 'PENDING',
+    driverType: 'OWNER_DRIVER',
+    displayName: input.displayName,
+    capabilities: ['AIRPORT'],
+    marketIds: input.marketIds,
+    currentVehicleId: vehicleId,
+    onlineState: 'OFFLINE',
+    readiness: {},
+    payoutAccountReference: null,
+    performance: { completionRate: 0.9, onTimeRate: 0.9 },
+    statusReason: 'Complete vehicle & documents checklist — await ops approval',
+    createdAt: input.now,
+    updatedAt: input.now,
+  });
+
+  await db.collection('driver_locations').doc(input.uid).set({
+    driverId: input.uid,
+    lat: 43.645,
+    lng: -79.38,
+    updatedAt: input.now,
+    stale: false,
+  });
+
+  logWarn('driver_pending_review', { driverId: input.uid, vehicleId });
+  return { vehicleId, driverStatus: 'PENDING' };
+}
+
 /**
  * First-time profile provisioning after Firebase Auth sign-in.
- * Sets custom claims roles array and users/{uid} record.
+ * Drivers/vehicles/documents always start PENDING — ops must approve.
  */
 export const provisionUser = onCall(
   { region: 'us-central1' },
@@ -32,7 +106,40 @@ export const provisionUser = onCall(
 
     const existing = await db.collection('users').doc(uid).get();
     if (existing.exists) {
-      return { uid, alreadyProvisioned: true };
+      if (data.role === 'DRIVER') {
+        const driver = await db.collection('drivers').doc(uid).get();
+        if (!driver.exists) {
+          const now = nowIso();
+          const marketIds = data.marketIds?.length ? data.marketIds : ['yyz'];
+          const repaired = await createPendingVehicleAndDocs({
+            uid,
+            displayName: data.displayName,
+            marketIds,
+            now,
+          });
+          await auth.setCustomUserClaims(uid, { roles: ['DRIVER'] });
+          logInfo('driver_profile_repaired', {
+            driverStatus: repaired.driverStatus,
+          });
+          return {
+            uid,
+            alreadyProvisioned: true,
+            repaired: true,
+            driverStatus: repaired.driverStatus,
+            vehicleId: repaired.vehicleId,
+          };
+        }
+        return {
+          uid,
+          alreadyProvisioned: true,
+          driverStatus: driver.data()?.status ?? null,
+        };
+      }
+      return {
+        uid,
+        alreadyProvisioned: true,
+        driverStatus: null,
+      };
     }
 
     const now = nowIso();
@@ -70,28 +177,32 @@ export const provisionUser = onCall(
       });
     }
 
+    let driverStatus: string | null = null;
+    let vehicleId: string | null = null;
+
     if (data.role === 'DRIVER') {
-      await db.collection('drivers').doc(uid).set({
+      const created = await createPendingVehicleAndDocs({
         uid,
-        status: 'PENDING',
-        driverType: 'OWNER_DRIVER',
         displayName: data.displayName,
-        capabilities: [],
         marketIds,
-        currentVehicleId: null,
-        onlineState: 'OFFLINE',
-        readiness: {},
-        payoutAccountReference: null,
-        performance: {},
-        statusReason: 'Complete onboarding and await review',
-        createdAt: now,
-        updatedAt: now,
+        now,
       });
+      driverStatus = created.driverStatus;
+      vehicleId = created.vehicleId;
     }
 
     await auth.setCustomUserClaims(uid, { roles });
-    logInfo('user_provisioned', { role: data.role });
-    return { uid, roles, alreadyProvisioned: false };
+    logInfo('user_provisioned', {
+      role: data.role,
+      driverStatus: driverStatus ?? undefined,
+    });
+    return {
+      uid,
+      roles,
+      alreadyProvisioned: false,
+      driverStatus,
+      vehicleId,
+    };
   },
 );
 
@@ -126,6 +237,7 @@ export const bootstrapAdmin = onRequest(
       { merge: true },
     );
     await auth.setCustomUserClaims(uid, { roles });
+    logInfo('admin_bootstrapped', { uid });
     res.json({ ok: true, uid, roles });
   },
 );
