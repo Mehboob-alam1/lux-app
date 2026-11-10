@@ -1,39 +1,42 @@
 export type NavItem = {
   href: string;
   label: string;
+  icon: string;
   disabled?: boolean;
   badge?: string;
 };
 
 export const NAV_ITEMS: NavItem[] = [
-  { href: '/', label: 'Dashboard' },
-  { href: '/live', label: 'Live Operations' },
-  { href: '/bookings', label: 'Bookings' },
-  { href: '/assignment', label: 'Assignment & Rescue' },
-  { href: '/customers', label: 'Customers' },
-  { href: '/drivers', label: 'Drivers' },
-  { href: '/vehicles', label: 'Vehicles' },
-  { href: '/airports', label: 'Airports' },
-  { href: '/events', label: 'Events' },
-  { href: '/pricing', label: 'Pricing' },
-  { href: '/payments', label: 'Payments' },
-  { href: '/payouts', label: 'Payouts' },
-  { href: '/support', label: 'Help & Support' },
-  { href: '/disputes', label: 'Disputes' },
-  { href: '/incidents', label: 'Incidents & Safety' },
-  { href: '/documents', label: 'Documents' },
-  { href: '/analytics', label: 'Analytics' },
-  { href: '/markets', label: 'Markets & Settings' },
+  { href: '/', label: 'Dashboard', icon: '◆' },
+  { href: '/live', label: 'Live Ops', icon: '◎' },
+  { href: '/bookings', label: 'Bookings', icon: '▣' },
+  { href: '/assignment', label: 'Assign', icon: '➔' },
+  { href: '/customers', label: 'Customers', icon: '◯' },
+  { href: '/drivers', label: 'Drivers', icon: '▴' },
+  { href: '/vehicles', label: 'Vehicles', icon: '▦' },
+  { href: '/documents', label: 'Documents', icon: '▤' },
+  { href: '/airports', label: 'Airports', icon: '▲' },
+  { href: '/events', label: 'Events', icon: '◇' },
+  { href: '/pricing', label: 'Pricing', icon: '≡' },
+  { href: '/payments', label: 'Payments', icon: '☰' },
+  { href: '/payouts', label: 'Payouts', icon: '↓' },
+  { href: '/support', label: 'Support', icon: '?' },
+  { href: '/disputes', label: 'Disputes', icon: '✖' },
+  { href: '/incidents', label: 'Safety', icon: '!' },
+  { href: '/analytics', label: 'Analytics', icon: '▦' },
+  { href: '/markets', label: 'Markets', icon: '○' },
   {
     href: '/fleets',
     label: 'Fleets',
+    icon: '▮',
     disabled: true,
-    badge: 'Coming in next update',
+    badge: 'Soon',
   },
   {
     href: '/agencies',
     label: 'Agencies',
+    icon: '⌂',
     disabled: true,
-    badge: 'Coming in next update',
+    badge: 'Soon',
   },
 ];

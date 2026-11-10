@@ -99,7 +99,10 @@ export function AdminShell({
                   title={item.badge}
                   aria-disabled="true"
                 >
-                  <span>{item.label}</span>
+                  <span className="lux-nav-icon" aria-hidden>
+                    {item.icon}
+                  </span>
+                  <span className="lux-nav-label">{item.label}</span>
                   <small>{item.badge}</small>
                 </div>
               );
@@ -111,7 +114,10 @@ export function AdminShell({
                 className={`lux-nav-item${active ? ' active' : ''}`}
                 aria-current={active ? 'page' : undefined}
               >
-                {item.label}
+                <span className="lux-nav-icon" aria-hidden>
+                  {item.icon}
+                </span>
+                <span className="lux-nav-label">{item.label}</span>
               </Link>
             );
           })}

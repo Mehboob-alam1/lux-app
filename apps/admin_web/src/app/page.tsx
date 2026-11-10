@@ -19,6 +19,7 @@ export default function DashboardPage() {
   const [unassigned, setUnassigned] = useState<number | null>(null);
   const [driversOnline, setDriversOnline] = useState<number | null>(null);
   const [supportOpen, setSupportOpen] = useState<number | null>(null);
+  const [docsQueued, setDocsQueued] = useState<number | null>(null);
   const [recent, setRecent] = useState<
     { id: string; status: string; updatedAt?: string }[]
   >([]);
@@ -31,7 +32,7 @@ export default function DashboardPage() {
 
     async function loadCounts() {
       try {
-        const [a, u, d, s] = await Promise.all([
+        const [a, u, d, s, docs] = await Promise.all([
           getCountFromServer(
             query(
               collection(db, 'bookings'),
@@ -68,18 +69,25 @@ export default function DashboardPage() {
               where('status', '==', 'OPEN'),
             ),
           ),
+          getCountFromServer(
+            query(
+              collection(db, 'driver_documents'),
+              where('status', '==', 'SUBMITTED'),
+            ),
+          ),
         ]);
         if (cancelled) return;
         setActive(a.data().count);
         setUnassigned(u.data().count);
         setDriversOnline(d.data().count);
         setSupportOpen(s.data().count);
+        setDocsQueued(docs.data().count);
         setFreshAt(new Date().toISOString());
         setError(null);
       } catch (e) {
         if (!cancelled) {
           setError(
-            `Live counts unavailable (${String(e)}). Sign in as admin@lux.test with emulators running.`,
+            `Live counts unavailable (${String(e)}). Sign out/in so admin claims refresh.`,
           );
         }
       }
@@ -111,14 +119,20 @@ export default function DashboardPage() {
   }, []);
 
   const kpis = [
-    { label: 'Active bookings', value: active, href: '/bookings?status=active' },
+    { label: 'Active bookings', value: active, href: '/bookings', note: 'In motion' },
     {
-      label: 'Unassigned',
+      label: 'Need assignment',
       value: unassigned,
-      href: '/assignment?filter=unassigned',
+      href: '/assignment',
+      note: 'Rescue queue',
     },
-    { label: 'Drivers online', value: driversOnline, href: '/drivers' },
-    { label: 'Open support', value: supportOpen, href: '/support' },
+    { label: 'Drivers online', value: driversOnline, href: '/drivers', note: 'Eligible & on' },
+    {
+      label: 'Docs to review',
+      value: docsQueued,
+      href: '/documents',
+      note: 'Uploaded files',
+    },
   ];
 
   return (
@@ -127,18 +141,42 @@ export default function DashboardPage() {
         <div className="logo">L</div>
         <h1>LUX</h1>
         <p className="lede">
-          Live Firebase command center. Counts and bookings stream from the
-          emulator / project — never fabricated.
+          Command center for live bookings, driver compliance, and rescue —
+          streaming from Firebase.
         </p>
       </div>
 
+      <section className="dash-actions" aria-label="Primary actions">
+        <Link href="/documents" className="dash-action accent">
+          <strong>Review documents</strong>
+          <span>
+            {docsQueued === null
+              ? 'Open compliance queue'
+              : `${docsQueued} file${docsQueued === 1 ? '' : 's'} waiting`}
+          </span>
+        </Link>
+        <Link href="/assignment" className="dash-action">
+          <strong>Assign & rescue</strong>
+          <span>Place unassigned bookings with eligible drivers</span>
+        </Link>
+        <Link href="/vehicles" className="dash-action">
+          <strong>Approve vehicles</strong>
+          <span>Checklist plate, class, photos, inspection</span>
+        </Link>
+        <Link href="/live" className="dash-action">
+          <strong>Live operations</strong>
+          <span>
+            {supportOpen === null
+              ? 'Monitor trips & alerts'
+              : `${supportOpen} open support`}
+          </span>
+        </Link>
+      </section>
+
       <section className="panel">
         <div className="panel-head">
-          <h2>Operations health</h2>
-          <p
-            className={`freshness${freshAt ? '' : ' warn'}`}
-            role="status"
-          >
+          <h2>Operations pulse</h2>
+          <p className={`freshness${freshAt ? '' : ' warn'}`} role="status">
             {freshAt
               ? `Fresh at ${new Date(freshAt).toLocaleTimeString()}`
               : 'Waiting for Firestore listeners…'}
@@ -154,13 +192,18 @@ export default function DashboardPage() {
             <span className="kpi-value">
               {k.value === null ? '—' : k.value}
             </span>
-            <span className="kpi-note">Live Firestore</span>
+            <span className="kpi-note">{k.note}</span>
           </Link>
         ))}
       </section>
 
       <section className="panel lime">
-        <h2>Recent bookings</h2>
+        <div className="panel-head">
+          <h2>Recent bookings</h2>
+          <Link href="/bookings" className="chip">
+            View all
+          </Link>
+        </div>
         {recent.length === 0 ? (
           <p className="empty-state">
             No bookings yet — create one from the customer app.
